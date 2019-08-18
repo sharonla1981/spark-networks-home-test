@@ -73,18 +73,20 @@ class WeatherForcastWrapper:
 
     def ingest_weather_data(self):
 
-        for station in self.stations:
-            for weather_data_type in self.weather_data_types:
-                #sqlalchemy table object
-                metadata = sqlalchemy.MetaData()
-                stg_table = sqlalchemy.Table(weather_data_type['staging_table'], metadata, autoload=True,
-                                                 autoload_with=self.db_engine)
+        for weather_data_type in self.weather_data_types:
+            # sqlalchemy table object
+            metadata = sqlalchemy.MetaData()
+            stg_table = sqlalchemy.Table(weather_data_type['staging_table'], metadata, autoload=True,
+                                         autoload_with=self.db_engine)
+            # truncate the staging table
+            self.db_engine.execute(
+                sqlalchemy.text("truncate table {stg_table}".format(stg_table=weather_data_type['staging_table'])))
+
+            for station in self.stations:
 
                 #get data from the api
                 weather_data_json = self.get_weather_data_from_api(station['station_name'],weather_data_type['api_call_weather_type'])
 
-                #truncate the staging table
-                self.db_engine.execute(sqlalchemy.text("truncate table {stg_table}".format(stg_table=weather_data_type['staging_table'])))
 
                 #insert new data to staging
                 insert_stmt = sqlalchemy.insert(stg_table,values={'weather_data':weather_data_json})
